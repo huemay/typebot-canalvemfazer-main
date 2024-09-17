@@ -13,10 +13,11 @@ export const StartAllWhatsAppsSessions = async (
       whatsapps.forEach(whatsapp => {
         if(whatsapp.type !== null) {
         setChannelWebhook(whatsapp, whatsapp.id.toString());
+        }
         else {
         StartWhatsAppSession(whatsapp, companyId);
           }
-        }
+        
       });
     }
   } catch (e) {
