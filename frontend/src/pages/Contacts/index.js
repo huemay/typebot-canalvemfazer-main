@@ -13,6 +13,8 @@ import Paper from "@material-ui/core/Paper";
 import Button from "@material-ui/core/Button";
 import Avatar from "@material-ui/core/Avatar";
 import WhatsAppIcon from "@material-ui/icons/WhatsApp";
+import FacebookIcon from "@material-ui/icons/Facebook";
+import InstagramIcon from "@material-ui/icons/Instagram";
 import SearchIcon from "@material-ui/icons/Search";
 import TextField from "@material-ui/core/TextField";
 import InputAdornment from "@material-ui/core/InputAdornment";
@@ -37,7 +39,7 @@ import { Can } from "../../components/Can";
 import NewTicketModal from "../../components/NewTicketModal";
 import { socketConnection } from "../../services/socket";
 
-import {CSVLink} from "react-csv";
+import { CSVLink } from "react-csv";
 
 const reducer = (state, action) => {
   if (action.type === "LOAD_CONTACTS") {
@@ -216,8 +218,8 @@ const Contacts = () => {
       toastError(err);
     }
   };
-  
- 
+
+
 
   const loadMore = () => {
     setPageNumber((prevState) => prevState + 1);
@@ -249,9 +251,8 @@ const Contacts = () => {
       <ConfirmationModal
         title={
           deletingContact
-            ? `${i18n.t("contacts.confirmationModal.deleteTitle")} ${
-                deletingContact.name
-              }?`
+            ? `${i18n.t("contacts.confirmationModal.deleteTitle")} ${deletingContact.name
+            }?`
             : `${i18n.t("contacts.confirmationModal.importTitlte")}`
         }
         open={confirmOpen}
@@ -297,10 +298,10 @@ const Contacts = () => {
             {i18n.t("contacts.buttons.add")}
           </Button>
 
-         <CSVLink style={{ textDecoration:'none'}} separator=";" filename={'contatos.csv'} data={contacts.map((contact) => ({ name: contact.name, number: contact.number, email: contact.email }))}>
-          <Button	variant="contained" color="primary"> 
-          EXPORTAR CONTATOS 
-          </Button>
+          <CSVLink style={{ textDecoration: 'none' }} separator=";" filename={'contatos.csv'} data={contacts.map((contact) => ({ name: contact.name, number: contact.number, email: contact.email }))}>
+            <Button variant="contained" color="primary">
+              EXPORTAR CONTATOS
+            </Button>
           </CSVLink>
 
         </MainHeaderButtonsWrapper>
@@ -322,6 +323,12 @@ const Contacts = () => {
                 {i18n.t("contacts.table.email")}
               </TableCell>
               <TableCell align="center">
+                Messenger ID
+              </TableCell>
+              <TableCell align="center">
+                Instagram ID
+              </TableCell>
+              <TableCell align="center">
                 {i18n.t("contacts.table.actions")}
               </TableCell>
             </TableRow>
@@ -336,47 +343,79 @@ const Contacts = () => {
                   <TableCell>{contact.name}</TableCell>
                   <TableCell align="center">{contact.number}</TableCell>
                   <TableCell align="center">{contact.email}</TableCell>
+                  <TableCell align="center">{contact.messengerId}</TableCell>
+                  <TableCell align="center">{contact.instagramId}</TableCell>
                   <TableCell align="center">
+                    {contact.number && (
+                      <IconButton
+                        size="small"
+                        onClick={() => {
+                          setContactTicket(contact);
+                          setNewTicketModalOpen(true);
+                        }}
+                      >
+                        <WhatsAppIcon />
+                      </IconButton>
+                    )}
+                  {!contact.number && !contact.instagramId && (
+                      <IconButton
+                        size="small"
+                        onClick={() =>{
+                          setContactTicket(contact);
+                          
+                          setNewTicketModalOpen(true);
+                        
+                        }}
+                          
+                      >
+                    <FacebookIcon />
+                    </IconButton>
+                    )}
+                  {!contact.number && !contact.messengerId && (
                     <IconButton
                       size="small"
                       onClick={() => {
                         setContactTicket(contact);
                         setNewTicketModalOpen(true);
-                      }}
-                    >
-                      <WhatsAppIcon />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => hadleEditContact(contact.id)}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <Can
-                      role={user.profile}
-                      perform="contacts-page:deleteContact"
-                      yes={() => (
-                        <IconButton
-                          size="small"
-                          onClick={(e) => {
-                            setConfirmOpen(true);
-                            setDeletingContact(contact);
-                          }}
-                        >
-                          <DeleteOutlineIcon />
-                        </IconButton>
-                      )}
-                    />
-                  </TableCell>
-                </TableRow>
+                        }}
+                      >
+                  <InstagramIcon />
+                </IconButton>
+              )}
+
+              <IconButton
+                size="small"
+                onClick={() => hadleEditContact(contact.id)}
+              >
+                <EditIcon />
+              </IconButton>
+              <Can
+                role={user.profile}
+                perform="contacts-page:deleteContact"
+                yes={() => (
+                  <IconButton
+                    size="small"
+                    onClick={(e) => {
+                      setConfirmOpen(true);
+                      setDeletingContact(contact);
+                    }}
+                  >
+                    <DeleteOutlineIcon />
+                  </IconButton>
+                )}
+              />
+            </TableCell>
+          </TableRow>
               ))}
-              {loading && <TableRowSkeleton avatar columns={3} />}
-            </>
-          </TableBody>
-        </Table>
-      </Paper>
-    </MainContainer>
+          {loading && <TableRowSkeleton avatar columns={3} />}
+        </>
+      </TableBody>
+    </Table>
+      </Paper >
+    </MainContainer >
+  
   );
+
 };
 
 export default Contacts;

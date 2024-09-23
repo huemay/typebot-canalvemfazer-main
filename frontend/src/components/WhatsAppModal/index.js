@@ -78,6 +78,7 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
     expiresInactiveMessage: "",
     expiresTicket: 0,
     timeUseBotQueues: 0,
+    integrationId: "",
     maxUseBotQueues: 3
   };
   const [whatsApp, setWhatsApp] = useState(initialState);
@@ -86,7 +87,31 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
   const [selectedQueueId, setSelectedQueueId] = useState(null)
   const [selectedPrompt, setSelectedPrompt] = useState(null);
   const [prompts, setPrompts] = useState([]);
+  const [integrations, setIntegrations] = useState([]);
+  //bibliotecas do hub
+  const [isHubSelected, setIsHubSelected] = useState(false);
+	const [availableChannels, setAvailableChannels] = useState([]);
+	const [selectedChannel, setSelectedChannel] = useState("");
   
+
+  // Função para buscar os canais disponíveis no hub
+	const fetchChannels = async () => {
+		try {
+			const { data } = await api.get("/hub-channel/");
+			console.log("Canais disponíveis:", data); // Adicione isso para verificar os dados recebidos
+			setIntegrations(data);
+		} catch (err) {
+			toastError(err);
+		}
+	};
+
+	useEffect(() => {
+		console.log("selectedChannel has changed:", selectedChannel);
+	}, [selectedChannel]);
+
+  //termina aqui o hub
+
+
     useEffect(() => {
     const fetchSession = async () => {
       if (!whatsAppId) return;
@@ -126,6 +151,20 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
       }
     })();
   }, []);
+  
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await api.get("/queueIntegration");
+
+        setIntegrations(data.queueIntegrations);
+      } catch (err) {
+        toastError(err);
+      }
+    })();
+  }, []);
+
+
 
   const handleSaveWhatsApp = async (values) => {
 const whatsappData = {
@@ -136,11 +175,31 @@ const whatsappData = {
     delete whatsappData["session"];
 
     try {
+      if (isHubSelected && selectedChannel) {
+				// Encontrar o objeto do canal completo baseado no ID do canal selecionado
+				const selectedChannelObj = availableChannels.find(
+					channel => channel.id === selectedChannel
+				);
+        if (selectedChannelObj) {
+					// Enviar o objeto completo do canal
+					const channels = [selectedChannelObj];
+					await api.post("/hub-channel/", {
+						...whatsappData,
+						channels
+					});
+					setTimeout(() => {
+						window.location.reload();
+					}, 100);
+				}
+
+       } else {
+
       if (whatsAppId) {
         await api.put(`/whatsapp/${whatsAppId}`, whatsappData);
-      } else {
+        } else {
         await api.post("/whatsapp", whatsappData);
       }
+    }
       toast.success(i18n.t("whatsappModal.success"));
       handleClose();
     } catch (err) {
@@ -208,22 +267,87 @@ const whatsappData = {
                         className={classes.textField}
                       />
                     </Grid>
+
+
                     <Grid style={{ paddingTop: 15 }} item>
                       <FormControlLabel
                         control={
                           <Field
                             as={Switch}
+                            checked={isHubSelected}
+												onChange={() => {
+													setIsHubSelected(prev => !prev);
+													if (!isHubSelected) {
+														fetchChannels();
+													}
+												}}
                             color="primary"
                             name="isDefault"
-                            checked={values.isDefault}
+                            
                           />
                         }
-                        label={i18n.t("whatsappModal.form.default")}
+                        label="Hub Notifcame"
                       />
+                      {!isHubSelected && (
+										<>
+
+											<FormControlLabel
+												control={
+													<Field
+														as={Switch}
+														color="primary"
+														name="isDefault"
+														checked={values.isDefault}
+													/>
+												}
+												label={i18n.t("whatsappModal.form.default")}
+											/>
+										</>
+									)}
+
+
                     </Grid>
                   </Grid>
                 </div>
-                <div>
+
+                {/* Se um hub for selecionado, mostrar lista de canais */}
+								{isHubSelected && (
+									<div>
+                    <FormControl
+                       variant="outlined"
+                       margin="dense"
+                       className={classes.FormControl}
+                       fullWidth
+                     >
+                    <InputLabel id="integrationId-selection-label">
+                     {i18n.t("queueModal.form.integrationId")}
+                     </InputLabel>
+										      <Field
+                          as={Select}
+                          label={i18n.t("queueModal.form.integrationId")}
+                          name="integrationId"
+                          id="integrationId"
+                          placeholder={i18n.t("queueModal.form.integrationId")}
+                          labelId="integrationId-selection-label"
+                          value={values.integrationId || ""}
+                          displayEmpty
+                          >
+                        
+											<MenuItem value={""} ></MenuItem>
+											{integrations.map((channel) => (
+												<MenuItem key={channel.id} value={channel.id}>
+													{channel.name}
+												</MenuItem>
+											))}
+                      </Field>
+                      
+                    </FormControl>
+									</div>
+								  )}
+                {!isHubSelected && (
+									<>
+
+                  <div>
                   <Field
                     as={TextField}
                     label={i18n.t("queueModal.form.greetingMessage")}
@@ -241,8 +365,8 @@ const whatsappData = {
                     variant="outlined"
                     margin="dense"
                   />
-                </div>
-                <div>
+                  </div>
+                  <div>
                   <Field
                     as={TextField}
                     label={i18n.t("queueModal.form.complationMessage")}
@@ -261,8 +385,8 @@ const whatsappData = {
                     variant="outlined"
                     margin="dense"
                   />
-                </div>
-                <div>
+                  </div>
+                  <div>
                   <Field
                     as={TextField}
                     label={i18n.t("queueModal.form.outOfHoursMessage")}
@@ -281,8 +405,8 @@ const whatsappData = {
                     variant="outlined"
                     margin="dense"
                   />
-                </div>
-                <div>
+                  </div>
+                  <div>
                   <Field
                     as={TextField}
                     label={i18n.t("queueModal.form.ratingMessage")}
@@ -298,8 +422,8 @@ const whatsappData = {
                     variant="outlined"
                     margin="dense"
                   />
-                </div>
-                <div>
+                  </div>
+                  <div>
                   <Field
                     as={TextField}
                     label={i18n.t("queueModal.form.token")}
@@ -309,16 +433,17 @@ const whatsappData = {
                     variant="outlined"
                     margin="dense"
                   />
-                </div>
-                <QueueSelect
+                  </div>
+                  <QueueSelect
                   selectedQueueIds={selectedQueueIds}
                   onChange={(selectedIds) => handleChangeQueue(selectedIds)}
-                />
-                <FormControl
+                  />
+
+                  <FormControl
                   margin="dense"
                   variant="outlined"
                   fullWidth
-                >
+                  >
                   <InputLabel>
                     {i18n.t("whatsappModal.form.prompt")}
                   </InputLabel>
@@ -342,20 +467,23 @@ const whatsappData = {
                       getContentAnchorEl: null,
                     }}
                   >
-                    {prompts.map((prompt) => (
+                      {prompts.map((prompt) => (
                       <MenuItem
                         key={prompt.id}
                         value={prompt.id}
                       >
                         {prompt.name}
                       </MenuItem>
+                      
+
+                      
                     ))}
                   </Select>
-                </FormControl>
-                <div>
+                  </FormControl>
+                  <div>
                   <h3>{i18n.t("whatsappModal.form.queueRedirection")}</h3>
                   <p>{i18n.t("whatsappModal.form.queueRedirectionDesc")}</p>
-				<Grid container spacing={2}>
+				          <Grid container spacing={2}>
                   <Grid item sm={6} >
                     <Field
                       fullWidth
@@ -415,7 +543,10 @@ const whatsappData = {
                       margin="dense"
                     />
                   </div>
-                </div>
+                  </div>
+                </>
+
+                  )}
               </DialogContent>
               <DialogActions>
                 <Button

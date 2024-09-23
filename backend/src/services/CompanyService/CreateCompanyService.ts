@@ -87,6 +87,18 @@ const CreateCompanyService = async (
     },
   });
 
+  await Setting.findOrCreate({
+    where: {
+      companyId: company.id,
+      key: "hub"
+    },
+    defaults: {
+      companyId: company.id,
+      key: "hub",
+      value: ""
+    },
+  });
+
   //tokenixc
   await Setting.findOrCreate({
     where: {

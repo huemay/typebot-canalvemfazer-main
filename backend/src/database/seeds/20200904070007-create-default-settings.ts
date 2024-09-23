@@ -101,6 +101,13 @@ module.exports = {
                             createdAt: new Date(),
                             updatedAt: new Date()
                         },
+                        {
+                            key: "hub",
+                            value: "",
+                            companyId: 1,
+                            createdAt: new Date(),
+                            updatedAt: new Date()
+                        },
 
                     ],
                     { transaction: t }

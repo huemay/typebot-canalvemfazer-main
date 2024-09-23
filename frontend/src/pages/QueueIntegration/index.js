@@ -20,7 +20,8 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Tooltip
+  Tooltip,
+  hubtoken
 } from "@material-ui/core";
 
 import {
@@ -293,6 +294,8 @@ const QueueIntegration = () => {
                       src={webhooks} className={classes.avatar} />)}
                     {integration.type === "typebot" && (<Avatar
                       src={typebot} className={classes.avatar} />)}
+                      {integration.type === "hubtoken" && (<Avatar
+                      src={webhooks} className={classes.avatar} />)}
                   </TableCell>
 
                   <TableCell align="center">{integration.id}</TableCell>

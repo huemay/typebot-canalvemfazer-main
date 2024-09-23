@@ -41,6 +41,10 @@ import { i18n } from "../../translate/i18n";
 import { WhatsAppsContext } from "../../context/WhatsApp/WhatsAppsContext";
 import toastError from "../../errors/toastError";
 
+import FacebookIcon from "@material-ui/icons/Facebook";
+import InstagramIcon from "@material-ui/icons/Instagram";
+import WhatsAppIcon from "@material-ui/icons/WhatsApp";
+
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { Can } from "../../components/Can";
 
@@ -114,6 +118,19 @@ const Connections = () => {
 	const [confirmModalInfo, setConfirmModalInfo] = useState(
 		confirmationModalInitialState
 	);
+
+	const getChannelIcon = (channel) => {
+		switch (channel.toLowerCase()) {
+		  case "facebook":
+			return <FacebookIcon />;
+		  case "instagram":
+			return <InstagramIcon />;
+		  case "whatsapp":
+			return <WhatsAppIcon />;
+		  default:
+			return null;
+		}
+	  };
 
 	const handleStartWhatsAppSession = async whatsAppId => {
 		try {
@@ -233,7 +250,8 @@ const Connections = () => {
 				)}
 				{(whatsApp.status === "CONNECTED" ||
 					whatsApp.status === "PAIRING" ||
-					whatsApp.status === "TIMEOUT") && (
+					whatsApp.status === "TIMEOUT") && 
+					whatsApp.type.toLowerCase() === "whatsapp" && (
 					<Button
 						size="small"
 						variant="outlined"

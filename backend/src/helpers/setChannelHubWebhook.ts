@@ -15,7 +15,7 @@ export const setChannelWebhook = async (
 
   const client = new Client(notificameHubToken);
 
-  const url = `https://1bf1-2804-3d34-5009-5f01-00-2.ngrok-free.app/hub-webhook/${whatsapp.qrcode}`;
+  const url = `https://07ad-2804-2c0-c0ba-2700-1446-e9ff-fe63-e26d.ngrok-free.app/hub-webhook/${whatsapp.qrcode}`;
 
   const subscription = new MessageSubscription(
     {

@@ -23,6 +23,11 @@ import { Tooltip } from "@material-ui/core";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import toastError from "../../errors/toastError";
 
+
+import FacebookIcon from "@material-ui/icons/Facebook";
+import InstagramIcon from "@material-ui/icons/Instagram";
+import WhatsAppIcon from "@material-ui/icons/WhatsApp";
+
 const useStyles = makeStyles((theme) => ({
   ticket: {
     position: "relative",
@@ -99,6 +104,21 @@ const useStyles = makeStyles((theme) => ({
     top: "0%",
     left: "0%",
   },
+  userTag: {
+		position: "absolute",
+		marginRight: 5,
+		right: 5,
+		bottom: 5,
+		background: "#2576D2",
+		color: "#ffffff",
+		border: "1px solid #CCC",
+		padding: 1,
+		paddingLeft: 5,
+		paddingRight: 5,
+		borderRadius: 10,
+		fontSize: "0.9em"
+	},
+
 }));
 
 const TicketListItem = ({ ticket }) => {
@@ -131,6 +151,8 @@ const TicketListItem = ({ ticket }) => {
     }
     history.push(`/tickets/${ticket.uuid}`);
   };
+  
+  
   console.log("🚀 Console Log : ticket.lastMessage", ticket.lastMessage);
 
   const handleSelectTicket = (ticket) => {
@@ -197,6 +219,18 @@ const TicketListItem = ({ ticket }) => {
                   )}
                 </Typography>
               )} */}
+              {ticket.whatsappId && (
+								<div className={classes.userTag} title={i18n.t("ticketsList.connectionTitle")}>{ticket.whatsapp?.name}</div>
+							)}
+							{ticket.contact.messengerId && (
+								<FacebookIcon />
+							)}
+							{ticket.contact.instagramId && (
+								<InstagramIcon />
+							)}
+							{ticket.contact.number && (
+								<WhatsAppIcon />
+							)}
             </span>
           }
 /*           secondary={

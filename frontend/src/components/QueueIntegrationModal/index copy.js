@@ -16,6 +16,7 @@ import {
   MenuItem,
   FormControl,
   TextField,
+  
   Grid,
   Paper,
 } from "@material-ui/core";
@@ -27,6 +28,7 @@ import { i18n } from "../../translate/i18n";
 
 import api from "../../services/api";
 import toastError from "../../errors/toastError";
+
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -75,9 +77,15 @@ const DialogflowSchema = Yup.object().shape({
   // language: Yup.string().min(2, "Too Short!").max(50, "Too Long!").required(),
 });
 
+const SessionSchema = Yup.object().shape({
+	name: Yup.string()
+		.min(2, "Too Short!")
+		.max(50, "Too Long!")
+		.required("Required"),
+});
 
 
-const QueueIntegration = ({ open, onClose, integrationId }) => {
+const QueueIntegration = ({ open, onClose, integrationId, whatsAppId }) => {
   const classes = useStyles();
 
   const initialState = {
@@ -94,10 +102,53 @@ const QueueIntegration = ({ open, onClose, integrationId }) => {
     typebotRestartMessage: "",
     typebotSlug: "",
     typebotUnknownMessage: "",
+    reetingMessage: "",
+		farewellMessage: "",
+		isDefault: false,
 
   };
 
   const [integration, setIntegration] = useState(initialState);
+  const [isHubSelected, setIsHubSelected] = useState(false);
+	const [availableChannels, setAvailableChannels] = useState([]);
+	const [selectedChannel, setSelectedChannel] = useState("");
+  const [whatsApp, setWhatsApp] = useState(initialState);
+	const [selectedQueueIds, setSelectedQueueIds] = useState([]);
+
+
+  // Função para buscar os canais disponíveis no hub
+// Função para buscar os canais disponíveis no hub
+const fetchChannels = async () => {
+  try {
+    const { data } = await api.get("/hub-channel/");
+    console.log("Canais disponíveis:", data); // Adicione isso para verificar os dados recebidos
+    setAvailableChannels(data);
+  } catch (err) {
+    toastError(err);
+  }
+};
+
+useEffect(() => {
+  console.log("selectedChannel has changed:", selectedChannel);
+}, [selectedChannel]);
+
+useEffect(() => {
+  const fetchSession = async () => {
+    if (!whatsAppId) return;
+
+    try {
+      const { data } = await api.get(`whatsapp/${whatsAppId}`);
+      setWhatsApp(data);
+
+      const whatsQueueIds = data.queues?.map(queue => queue.id);
+      setSelectedQueueIds(whatsQueueIds);
+    } catch (err) {
+      toastError(err);
+    }
+  };
+  fetchSession();
+}, [whatsAppId]);
+ 
 
   useEffect(() => {
     (async () => {
@@ -129,12 +180,16 @@ const QueueIntegration = ({ open, onClose, integrationId }) => {
   const handleClose = () => {
     onClose();
     setIntegration(initialState);
+    setWhatsApp(initialState);
+		setIsHubSelected(false);
+		setSelectedChannel("");
   };
 
   const handleTestSession = async (event, values) => {
     try {
+      if(values.type === 'hubhubtoken') values.projectName = values.name
       const { projectName, jsonContent, language } = values;
-
+      if(integrationId){
       await api.post(`/queueIntegration/testSession`, {
         projectName,
         jsonContent,
@@ -142,14 +197,20 @@ const QueueIntegration = ({ open, onClose, integrationId }) => {
       });
 
       toast.success(i18n.t("queueIntegrationModal.messages.testSuccess"));
-    } catch (err) {
+    }else{
+      await api.post("/queueIntegration", values);
+        toast.success(i18n.t("queueIntegrationModal.messages.addSuccess"));
+    }
+
+    } 
+    catch (err) {
       toastError(err);
     }
   };
 
   const handleSaveDialogflow = async (values) => {
     try {
-      if (values.type === 'n8n' || values.type === 'webhook' || values.type === 'typebot' || values.type === 'hubtoken') values.projectName = values.name
+      if (values.type === 'n8n' || values.type === 'webhook' || values.type === 'typebot'|| values.type === 'hub') values.projectName = values.name
       if (integrationId) {
         await api.put(`/queueIntegration/${integrationId}`, values);
         toast.success(i18n.t("queueIntegrationModal.messages.editSuccess"));
@@ -163,6 +224,13 @@ const QueueIntegration = ({ open, onClose, integrationId }) => {
     }
   };
 
+
+  const handleSaveWhatsApp = async values => {
+		const whatsappData = { ...values, queueIds: selectedQueueIds };
+
+		
+
+
   return (
     <div className={classes.root}>
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth="md" scroll="paper">
@@ -170,6 +238,9 @@ const QueueIntegration = ({ open, onClose, integrationId }) => {
           {integrationId
             ? `${i18n.t("queueIntegrationModal.title.edit")}`
             : `${i18n.t("queueIntegrationModal.title.add")}`}
+            {whatsAppId
+						? i18n.t("whatsappModal.title.edit")
+						: i18n.t("whatsappModal.title.add")}
         </DialogTitle>
         <Formik
           initialValues={integration}
@@ -181,7 +252,20 @@ const QueueIntegration = ({ open, onClose, integrationId }) => {
               actions.setSubmitting(false);
             }, 400);
           }}
+          
         >
+        <Formik
+					initialValues={whatsApp}
+					enableReinitialize={true}
+					validationSchema={SessionSchema}
+					onSubmit={(values, actions) => {
+						setTimeout(() => {
+							handleSaveWhatsApp(values);
+							actions.setSubmitting(false);
+						}, 400);
+					}}
+				></Formik>
+
           {({ touched, errors, isSubmitting, values }) => (
             <Form>
               <Paper square className={classes.mainPaper} elevation={1}>
@@ -212,7 +296,7 @@ const QueueIntegration = ({ open, onClose, integrationId }) => {
                           <MenuItem value="n8n">N8N</MenuItem>
                           <MenuItem value="webhook">WebHooks</MenuItem>
                           <MenuItem value="typebot">Typebot</MenuItem>
-                          <MenuItem value="hubtoken">hubtoken</MenuItem>
+                          <MenuItem value="hub">hub</MenuItem>
                         </Field>
                       </FormControl>
                     </Grid>
@@ -231,6 +315,17 @@ const QueueIntegration = ({ open, onClose, integrationId }) => {
                             margin="dense"
                             className={classes.textField}
                           />
+                          <Field
+										          as={TextField}
+                              label={i18n.t("whatsappModal.form.name")}
+                              autoFocus
+                              name="name"
+                              error={touched.name && Boolean(errors.name)}
+                              helperText={touched.name && errors.name}
+                              variant="outlined"
+                              margin="dense"
+                              className={classes.textField}
+									          />
                         </Grid>
                         <Grid item xs={12} md={6} xl={6} >
                           <FormControl
@@ -292,40 +387,7 @@ const QueueIntegration = ({ open, onClose, integrationId }) => {
                       </>
                     )}
 
-                    {(values.type === "n8n" || values.type === "webhook") && (
-                      <>
-                        <Grid item xs={12} md={6} xl={6} >
-                          <Field
-                            as={TextField}
-                            label={i18n.t("queueIntegrationModal.form.name")}
-                            autoFocus
-                            required
-                            name="name"
-                            error={touched.name && Boolean(errors.name)}
-                            helpertext={touched.name && errors.name}
-                            variant="outlined"
-                            margin="dense"
-                            fullWidth
-                            className={classes.textField}
-                          />
-                        </Grid>
-                        <Grid item xs={12} md={12} xl={12} >
-                          <Field
-                            as={TextField}
-                            label={i18n.t("queueIntegrationModal.form.urlN8N")}
-                            name="urlN8N"
-                            error={touched.urlN8N && Boolean(errors.urlN8N)}
-                            helpertext={touched.urlN8N && errors.urlN8N}
-                            variant="outlined"
-                            margin="dense"
-                            required
-                            fullWidth
-                            className={classes.textField}
-                          />
-                        </Grid>
-                      </>
-                    )}
-                     {(values.type === "hubtoken" || values.type === "hubtoken") && (
+                    {(values.type === "n8n" || values.type === "webhook" || values.type === "hub") && (
                       <>
                         <Grid item xs={12} md={6} xl={6} >
                           <Field
@@ -359,6 +421,7 @@ const QueueIntegration = ({ open, onClose, integrationId }) => {
                       </>
                     )}
 
+                    
                     {(values.type === "typebot") && (
                       <>
                         <Grid item xs={12} md={6} xl={6} >
@@ -487,6 +550,7 @@ const QueueIntegration = ({ open, onClose, integrationId }) => {
                     )}
                   </Grid>
                 </DialogContent>
+
               </Paper>
 
               <DialogActions>
@@ -528,6 +592,33 @@ const QueueIntegration = ({ open, onClose, integrationId }) => {
                     />
                   )}
                 </Button>
+                <Button
+									onClick={handleClose}
+									color="secondary"
+									disabled={isSubmitting}
+									variant="outlined"
+								>
+									{i18n.t("whatsappModal.buttons.cancel")}
+								</Button>
+								<Button
+									type="submit"
+									color="primary"
+									disabled={isSubmitting}
+									variant="contained"
+									className={classes.btnWrapper}
+								>
+									{whatsAppId
+										? i18n.t("whatsappModal.buttons.okEdit")
+										: i18n.t("whatsappModal.buttons.okAdd")}
+									{isSubmitting && (
+										<CircularProgress
+											size={24}
+											className={classes.buttonProgress}
+										/>
+									)}
+								</Button>
+
+
               </DialogActions>
             </Form>
           )}

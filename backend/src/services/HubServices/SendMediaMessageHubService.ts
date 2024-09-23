@@ -34,7 +34,7 @@ export const SendMediaMessageService = async (
 
   message = message.replace(/\n/g, " ");
 
-  const backendUrl = 'https://1bf1-2804-3d34-5009-5f01-00-2.ngrok-free.app';
+  const backendUrl = 'https://07ad-2804-2c0-c0ba-2700-1446-e9ff-fe63-e26d.ngrok-free.app';
 
   const filename = encodeURIComponent(media.filename);
   mediaUrl = `${backendUrl}/public/${filename}`;

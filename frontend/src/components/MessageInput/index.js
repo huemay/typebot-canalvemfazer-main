@@ -12,6 +12,9 @@ import CircularProgress from "@material-ui/core/CircularProgress";
 import { green } from "@material-ui/core/colors";
 import AttachFileIcon from "@material-ui/icons/AttachFile";
 import IconButton from "@material-ui/core/IconButton";
+
+import MoreVert from "@material-ui/icons/MoreVert";
+
 import MoodIcon from "@material-ui/icons/Mood";
 import SendIcon from "@material-ui/icons/Send";
 import CancelIcon from "@material-ui/icons/Cancel";
@@ -19,7 +22,16 @@ import ClearIcon from "@material-ui/icons/Clear";
 import MicIcon from "@material-ui/icons/Mic";
 import CheckCircleOutlineIcon from "@material-ui/icons/CheckCircleOutline";
 import HighlightOffIcon from "@material-ui/icons/HighlightOff";
-import { FormControlLabel, Switch } from "@material-ui/core";
+
+import {
+	FormControlLabel,
+	Hidden,
+	Menu,
+	MenuItem,
+	Switch,
+  } from "@material-ui/core";
+
+  import ClickAwayListener from "@material-ui/core/ClickAwayListener";
 
 import { i18n } from "../../translate/i18n";
 import api from "../../services/api";
@@ -38,6 +50,11 @@ const useStyles = makeStyles(theme => ({
 		flexDirection: "column",
 		alignItems: "center",
 		borderTop: "1px solid rgba(0, 0, 0, 0.12)",
+		[theme.breakpoints.down("sm")]: {
+			position: "fixed",
+			bottom: 0,
+			width: "100%",
+		  },
 	},
 
 	newMessageBox: {
@@ -55,6 +72,7 @@ const useStyles = makeStyles(theme => ({
 		display: "flex",
 		borderRadius: 20,
 		flex: 1,
+		position: "relative",
 	},
 
 	messageInput: {
@@ -161,6 +179,30 @@ const useStyles = makeStyles(theme => ({
 		color: "#6bcbef",
 		fontWeight: 500,
 	},
+	messageQuickAnswersWrapper: {
+		margin: 0,
+		position: "absolute",
+		bottom: "50px",
+		background: "#ffffff",
+		padding: "2px",
+		border: "1px solid #CCC",
+		left: 0,
+		width: "100%",
+		"& li": {
+		  listStyle: "none",
+		  "& a": {
+			display: "block",
+			padding: "8px",
+			textOverflow: "ellipsis",
+			overflow: "hidden",
+			maxHeight: "32px",
+			"&:hover": {
+			  background: "#F1F1F1",
+			  cursor: "pointer",
+			},
+		  },
+		},
+	  },
 }));
 
 const MessageInput = ({ ticketStatus }) => {
@@ -172,17 +214,34 @@ const MessageInput = ({ ticketStatus }) => {
 	const [showEmoji, setShowEmoji] = useState(false);
 	const [loading, setLoading] = useState(false);
 	const [recording, setRecording] = useState(false);
+	const [quickAnswers, setQuickAnswer] = useState([]);
+	const [typeBar, setTypeBar] = useState(false);
 	const inputRef = useRef();
-	const { setReplyingMessage, replyingMessage } = useContext(
-		ReplyMessageContext
-	);
+	const [anchorEl, setAnchorEl] = useState(null);
+	const { setReplyingMessage, replyingMessage } =
+    useContext(ReplyMessageContext);
+	
 	const { user } = useContext(AuthContext);
+	const [channelType, setChannelType] = useState(null);
 
 	const [signMessage, setSignMessage] = useLocalStorage("signOption", true);
 
 	useEffect(() => {
 		inputRef.current.focus();
 	}, [replyingMessage]);
+
+	useEffect(() => {
+		const fetchChannelType = async () => {
+		  try {
+			const { data } = await api.get(`/tickets/${ticketId}`);
+			setChannelType(data.whatsapp?.type);
+		  } catch (err) {
+			toastError(err);
+		  }
+		};
+	
+		fetchChannelType();
+	  }, [ticketId]);
 
 	useEffect(() => {
 		inputRef.current.focus();
@@ -196,7 +255,13 @@ const MessageInput = ({ ticketStatus }) => {
 
 	const handleChangeInput = e => {
 		setInputMessage(e.target.value);
+		handleLoadQuickAnswer(e.target.value);
 	};
+
+	const handleQuickAnswersClick = (value) => {
+		setInputMessage(value);
+		setTypeBar(false);
+	  };
 
 	const handleAddEmoji = e => {
 		let emoji = e.native;
@@ -230,7 +295,11 @@ const MessageInput = ({ ticketStatus }) => {
 		});
 
 		try {
-			await api.post(`/messages/${ticketId}`, formData);
+			if (channelType !== null) {
+				await api.post(`/hub-message/${ticketId}`, formData);
+			  } else {
+				await api.post(`/messages/${ticketId}`, formData);
+			  }
 		} catch (err) {
 			toastError(err);
 		}
@@ -253,7 +322,11 @@ const MessageInput = ({ ticketStatus }) => {
 			quotedMsg: replyingMessage,
 		};
 		try {
-			await api.post(`/messages/${ticketId}`, message);
+			if (channelType !== null) {
+				await api.post(`/hub-message/${ticketId}`, message);
+			  } else {
+				await api.post(`/messages/${ticketId}`, message);
+			  }
 		} catch (err) {
 			toastError(err);
 		}
@@ -277,6 +350,26 @@ const MessageInput = ({ ticketStatus }) => {
 		}
 	};
 
+	const handleLoadQuickAnswer = async (value) => {
+		if (value && value.indexOf("/") === 0) {
+		  try {
+			const { data } = await api.get("/quickAnswers/", {
+			  params: { searchParam: inputMessage.substring(1) },
+			});
+			setQuickAnswer(data.quickAnswers);
+			if (data.quickAnswers.length > 0) {
+			  setTypeBar(true);
+			} else {
+			  setTypeBar(false);
+			}
+		  } catch (err) {
+			setTypeBar(false);
+		  }
+		} else {
+		  setTypeBar(false);
+		}
+	  };
+
 	const handleUploadAudio = async () => {
 		setLoading(true);
 		try {
@@ -293,7 +386,11 @@ const MessageInput = ({ ticketStatus }) => {
 			formData.append("body", filename);
 			formData.append("fromMe", true);
 
-			await api.post(`/messages/${ticketId}`, formData);
+			if (channelType !== null) {
+				await api.post(`/hub-message/${ticketId}`, formData);
+			  } else {
+				await api.post(`/messages/${ticketId}`, formData);
+			  }
 		} catch (err) {
 			toastError(err);
 		}
@@ -310,6 +407,14 @@ const MessageInput = ({ ticketStatus }) => {
 			toastError(err);
 		}
 	};
+
+	const handleOpenMenuClick = (event) => {
+		setAnchorEl(event.currentTarget);
+	  };
+	
+	  const handleMenuItemClick = (event) => {
+		setAnchorEl(null);
+	  };
 
 	const renderReplyingMessage = message => {
 		return (
@@ -377,6 +482,7 @@ const MessageInput = ({ ticketStatus }) => {
 			<Paper square elevation={0} className={classes.mainWrapper}>
 				{replyingMessage && renderReplyingMessage(replyingMessage)}
 				<div className={classes.newMessageBox}>
+				<Hidden only={["sm", "xs"]}>
 					<IconButton
 						aria-label="emojiPicker"
 						component="span"
@@ -387,12 +493,14 @@ const MessageInput = ({ ticketStatus }) => {
 					</IconButton>
 					{showEmoji ? (
 						<div className={classes.emojiBox}>
+							<ClickAwayListener onClickAway={(e) => setShowEmoji(false)}>
 							<Picker
 								perLine={16}
 								showPreview={false}
 								showSkinTones={false}
 								onSelect={handleAddEmoji}
 							/>
+							</ClickAwayListener>
 						</div>
 					) : null}
 
@@ -429,6 +537,71 @@ const MessageInput = ({ ticketStatus }) => {
 							/>
 						}
 					/>
+					</Hidden>
+					<Hidden only={["md", "lg", "xl"]}>
+            <IconButton
+              aria-controls="simple-menu"
+              aria-haspopup="true"
+              onClick={handleOpenMenuClick}
+            >
+              <MoreVert></MoreVert>
+            </IconButton>
+            <Menu
+              id="simple-menu"
+              keepMounted
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={handleMenuItemClick}
+            >
+              <MenuItem onClick={handleMenuItemClick}>
+                <IconButton
+                  aria-label="emojiPicker"
+                  component="span"
+                  disabled={loading || recording || ticketStatus !== "open"}
+                  onClick={(e) => setShowEmoji((prevState) => !prevState)}
+                >
+                  <MoodIcon className={classes.sendMessageIcons} />
+                </IconButton>
+              </MenuItem>
+              <MenuItem onClick={handleMenuItemClick}>
+                <input
+                  multiple
+                  type="file"
+                  id="upload-button"
+                  disabled={loading || recording || ticketStatus !== "open"}
+                  className={classes.uploadInput}
+                  onChange={handleChangeMedias}
+                />
+                <label htmlFor="upload-button">
+                  <IconButton
+                    aria-label="upload"
+                    component="span"
+                    disabled={loading || recording || ticketStatus !== "open"}
+                  >
+                    <AttachFileIcon className={classes.sendMessageIcons} />
+                  </IconButton>
+                </label>
+              </MenuItem>
+              <MenuItem onClick={handleMenuItemClick}>
+                <FormControlLabel
+                  style={{ marginRight: 7, color: "gray" }}
+                  label={i18n.t("messagesInput.signMessage")}
+                  labelPlacement="start"
+                  control={
+                    <Switch
+                      size="small"
+                      checked={signMessage}
+                      onChange={(e) => {
+                        setSignMessage(e.target.checked);
+                      }}
+                      name="showAllTickets"
+                      color="primary"
+                    />
+                  }
+                />
+              </MenuItem>
+            </Menu>
+          </Hidden>
 					<div className={classes.messageInputWrapper}>
 						<InputBase
 							inputRef={input => {
@@ -456,6 +629,24 @@ const MessageInput = ({ ticketStatus }) => {
 								}
 							}}
 						/>
+						{typeBar ? (
+              <ul className={classes.messageQuickAnswersWrapper}>
+                {quickAnswers.map((value, index) => {
+                  return (
+                    <li
+                      className={classes.messageQuickAnswersWrapperItem}
+                      key={index}
+                    >
+                      {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
+                      <a onClick={() => handleQuickAnswersClick(value.message)}>
+                        {`${value.shortcut} - ${value.message}`}
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : ( <div></div>
+            )}
 					</div>
 					{inputMessage ? (
 						<IconButton

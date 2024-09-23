@@ -28,6 +28,13 @@ export const provider = async (ticket: Ticket, msg: proto.IWebMessageInfo, compa
         companyId
       }
     });
+
+    const hubtoken = await Setting.findOne({
+      where: {
+        key: "hub",
+        companyId
+      }
+    });
     const ixcapikey = await Setting.findOne({
       where: {
         key: "tokenixc",
@@ -71,6 +78,7 @@ export const provider = async (ticket: Ticket, msg: proto.IWebMessageInfo, compa
     const ixckeybase64 = btoa(ixcapikey.value);
     const urlixc = urlixcdb.value
     const asaastk = asaastoken.value
+    const hubtk = hubtoken.value
 
     const cnpj_cpf = getBodyMessage(msg);
     let numberCPFCNPJ = cpfcnpj;
@@ -1200,6 +1208,12 @@ export const provider = async (ticket: Ticket, msg: proto.IWebMessageInfo, compa
         companyId
       }
     });
+    const hubtoken = await Setting.findOne({
+      where: {
+        key: "hub",
+        companyId
+      }
+    });
     const ixcapikey = await Setting.findOne({
       where: {
         key: "tokenixc",
@@ -1243,6 +1257,7 @@ export const provider = async (ticket: Ticket, msg: proto.IWebMessageInfo, compa
     const ixckeybase64 = btoa(ixcapikey.value);
     const urlixc = urlixcdb.value
     const asaastk = asaastoken.value
+    const hubtk = hubtoken.value
 
     const cnpj_cpf = getBodyMessage(msg);
     let numberCPFCNPJ = cpfcnpj;
